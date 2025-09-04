@@ -2,21 +2,30 @@
 
 import { useState } from "react";
 import axios from "axios";
+import Image from "next/image";
+
+type PredictionResult = {
+  class_index: number;
+  class_name: string;
+  confidence: number;
+  all_probabilities: Record<string, number>;
+};
 
 export default function Home() {
-  const [file, setFile] = useState(null);
-  const [preview, setPreview] = useState(null);
-  const [result, setResult] = useState(null);
+  const [file, setFile] = useState<File | null>(null);
+  const [preview, setPreview] = useState<string | null>(null);
+  const [result, setResult] = useState<PredictionResult | null>(null);
   const [loading, setLoading] = useState(false);
 
-  const handleFileChange = (e) => {
-    const selectedFile = e.target.files[0];
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const selectedFile = e.target.files?.[0];
+    if (!selectedFile) return;
     setFile(selectedFile);
     setPreview(URL.createObjectURL(selectedFile));
     setResult(null);
   };
 
-  const handleSubmit = async (e) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!file) return;
 
@@ -25,7 +34,7 @@ export default function Home() {
 
     setLoading(true);
     try {
-      const res = await axios.post(
+      const res = await axios.post<PredictionResult>(
         "https://test-ml-api-rest.onrender.com/predict",
         formData,
         { headers: { "Content-Type": "multipart/form-data" } }
@@ -40,65 +49,66 @@ export default function Home() {
   };
 
   return (
-    <div className="min-h-screen bg-gray-900 flex flex-col items-center justify-center p-6 text-gray-200">
-      <h1 className="text-4xl font-extrabold mb-10 text-center tracking-wide">
-        🌱 Clasificación de Frijol
-      </h1>
+    <div className="min-h-screen bg-gray-900 text-white flex flex-col items-center justify-start p-6">
+      <h1 className="text-4xl font-bold mb-8 text-center">Clasificación de Frijol 🌱</h1>
 
-      <div className="w-full max-w-lg bg-gray-800 rounded-3xl shadow-xl p-8 flex flex-col items-center gap-6">
+      <div className="w-full max-w-xl bg-gray-800 rounded-2xl shadow-lg p-6 flex flex-col items-center gap-6">
         <form onSubmit={handleSubmit} className="flex flex-col items-center gap-4 w-full">
           <input
+            placeholder="Sube una imagen de un frijol"
             type="file"
             accept="image/*"
             onChange={handleFileChange}
-            className="w-full p-3 border border-gray-700 rounded-xl bg-gray-900 text-gray-200 hover:border-green-500 transition"
+            className="p-2 border border-gray-700 rounded-lg bg-gray-900 text-white w-full"
           />
 
           {preview && (
-            <img
-              src={preview}
-              alt="preview"
-              className="w-64 h-64 object-cover border-2 border-gray-700 rounded-xl shadow-inner mt-2"
-            />
+            <div className="w-64 h-64 relative border-2 border-gray-700 rounded-xl shadow-inner overflow-hidden">
+              <Image
+                src={preview}
+                alt="preview"
+                fill
+                style={{ objectFit: "cover" }}
+                className="rounded-xl"
+              />
+            </div>
           )}
 
           <button
             type="submit"
+            className="bg-green-600 text-white px-8 py-3 rounded-xl font-semibold shadow-lg hover:bg-green-700 transition w-full"
             disabled={loading}
-            className="w-full py-3 px-6 bg-green-500 text-black font-bold rounded-xl hover:bg-green-600 transition-shadow shadow-md"
           >
             {loading ? "Procesando..." : "Predecir"}
           </button>
         </form>
 
         {result && (
-          <div className="w-full mt-6">
-            <h2 className="text-xl font-semibold mb-4 text-center">
+          <div className="w-full mt-6 space-y-4">
+            <h2 className="text-2xl font-bold text-center">
               Resultado:{" "}
               <span
                 className={`${
                   result.class_name === "healthy" ? "text-green-400" : "text-red-400"
-                } font-bold`}
+                }`}
               >
                 {result.class_name.toUpperCase()} ({(result.confidence * 100).toFixed(2)}%)
               </span>
             </h2>
 
-            <div className="space-y-3">
+            <div className="space-y-2">
               {Object.entries(result.all_probabilities).map(([key, value]) => (
-                <div key={key} className="flex items-center gap-3">
+                <div key={key} className="flex items-center gap-2">
                   <span className="w-36 font-medium">{key}</span>
                   <div className="flex-1 h-4 bg-gray-700 rounded-full overflow-hidden">
                     <div
                       className={`h-4 rounded-full transition-all duration-500 ${
-                        key === result.class_name ? "bg-green-500" : "bg-gray-600"
+                        key === result.class_name ? "bg-green-500" : "bg-gray-500"
                       }`}
                       style={{ width: `${(value * 100).toFixed(2)}%` }}
                     ></div>
                   </div>
-                  <span className="w-12 text-right font-mono">
-                    {(value * 100).toFixed(2)}%
-                  </span>
+                  <span className="w-12 text-right font-mono">{(value * 100).toFixed(2)}%</span>
                 </div>
               ))}
             </div>
